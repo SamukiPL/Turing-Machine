@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="40dp"
+    android:layout_height="40dp">
+    <TextView
+        android:id="@+id/direction"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:gravity="center"
+        android:text="-" />
+    <TextView
+        android:id="@+id/symbol"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:gravity="center"
+        android:layout_toRightOf="@id/direction"
+        android:text="#" />
+    <TextView
+        android:id="@+id/state"
+        android:layout_width="40dp"
+        android:layout_height="20dp"
+        android:gravity="center"
+        android:layout_below="@id/direction"
+        android:text="Q0" />
+</RelativeLayout>
