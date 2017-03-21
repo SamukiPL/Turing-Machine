@@ -1,4 +1,0 @@
-Turing.MainActivity, Turing;md5f7b2f1598992f78f9cc5e45dc0cb0834.MainActivity
-Turing.MainActivity, Turing, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null;md5f7b2f1598992f78f9cc5e45dc0cb0834.MainActivity
-Turing.MainActivity;md5f7b2f1598992f78f9cc5e45dc0cb0834.MainActivity
-turing.MainActivity;md5f7b2f1598992f78f9cc5e45dc0cb0834.MainActivity
