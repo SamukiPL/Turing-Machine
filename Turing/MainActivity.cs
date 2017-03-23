@@ -6,14 +6,18 @@ using Android.App;
 using Android.Widget;
 using Android.OS;
 using Android.Content;
+using Android.Graphics;
+using Android.Graphics.Drawables;
 using System.Collections.Generic;
 using Android.Views;
 
 namespace Turing {
-    [Activity(Label = "Turing", MainLauncher = true, Icon = "@drawable/icon")]
+    [Activity (Label = "Turing Machine", MainLauncher = true, Icon = "@drawable/icon",
+        ConfigurationChanges = Android.Content.PM.ConfigChanges.Orientation, 
+        ScreenOrientation = Android.Content.PM.ScreenOrientation.Landscape)]
 
     public class MainActivity : Activity {
-        Timer tak;
+        Timer machineTimer;
         int delayTime;
         TextView[] tape;
         List<string> tapeList;
@@ -26,13 +30,48 @@ namespace Turing {
         List<LinearLayout> tableRows;
         int rows, cols;
         int row, col;
+        Drawable editTextDrawable;
 
         struct state {
             public string symbol;
             public string direction;
             public int nextState;
         }
-        //SET BUTTONS
+        //ADDING THINGS TO TABLE
+        protected void ChangeState(RelativeLayout layout) {
+            layout.Click += delegate {
+                layout.SetBackgroundColor(Color.Argb(1, 62,62,62));
+
+                View dialogLayout = inflater.Inflate(Resource.Layout.CellAlertLayout, null);
+                AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+
+                EditText newDirection = dialogLayout.FindViewById<EditText>(Resource.Id.newDirection);
+                EditText newSymbol = dialogLayout.FindViewById<EditText>(Resource.Id.newSymbol);
+                EditText newState = dialogLayout.FindViewById<EditText>(Resource.Id.newState);
+
+                TextView direction = layout.FindViewById<TextView>(Resource.Id.direction);
+                TextView symbol = layout.FindViewById<TextView>(Resource.Id.symbol);
+                TextView state = layout.FindViewById<TextView>(Resource.Id.state);
+
+                newDirection.Text = direction.Text;
+                newSymbol.Text = symbol.Text;
+                newState.Text = state.Text;
+
+                dialog.SetView(dialogLayout);
+                dialog.SetTitle("Insert data");
+                dialog.SetCancelable(false)
+                    .SetPositiveButton("OK", (a, b) => {
+                        direction.Text = newDirection.Text;
+                        symbol.Text = newSymbol.Text;
+                        state.Text = newState.Text;
+                        SetImmersiveMode();
+                    })
+                    .SetNegativeButton("Cancel", (a, b) => {
+                        SetImmersiveMode();
+                    });
+                dialog.Show();
+            };
+        }
         protected void AddState() {
             cols++;
             TextView newText = (TextView)inflater.Inflate(Resource.Layout.StateCellLayout, null);
@@ -45,17 +84,58 @@ namespace Turing {
             for(int i = 1; i <= rows; i++) {
                 RelativeLayout symbolCell = (RelativeLayout)inflater.Inflate(Resource.Layout.CellLayout, null);
                 tableRows[i].AddView(symbolCell);
+                ChangeState(symbolCell);
             }
+        }
+
+        protected void ChangeSymbol(TextView view) {
+            view.Click += delegate {
+                View dialogLayout = inflater.Inflate(Resource.Layout.SymbolAlertLayout, null);
+                AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+
+                EditText newSymbol = dialogLayout.FindViewById<EditText>(Resource.Id.newSymbol);
+                newSymbol.Text = view.Text;
+
+                dialog.SetView(dialogLayout);
+                dialog.SetTitle(" ");
+                dialog.SetCancelable(false)
+                    .SetPositiveButton("OK", (a, b) => {
+                        view.Text = Convert.ToString(newSymbol.Text[0]);
+                        SetImmersiveMode();
+                    })
+                    .SetNegativeButton("Cancel", (a, b) => {
+                        SetImmersiveMode();
+                    });
+                dialog.Show();
+            };
         }
         protected void AddSymbol() {
             LinearLayout symbolRow = (LinearLayout)inflater.Inflate(Resource.Layout.RowLayout, null);
             tableRows.Add(symbolRow);
+
+            RelativeLayout firstLayout = (RelativeLayout)symbolRow.GetChildAt(0);
+            ChangeSymbol((TextView)firstLayout.GetChildAt(1));
+
             tableSymbols.AddView(symbolRow, tableSymbols.ChildCount - 1);
-            for(int i = 0; i <= cols; i++) {
+            for(int i = 0; i < cols; i++) {
                 RelativeLayout symbolCell = (RelativeLayout)inflater.Inflate(Resource.Layout.CellLayout, null);
+                ChangeState(symbolCell);
                 symbolRow.AddView(symbolCell);
             }
             rows++;
+        }
+
+        //SET ON THE START
+        protected void SetImmersiveMode() {
+            View decorView = Window.DecorView;
+            var uiOption = (int)decorView.SystemUiVisibility;
+
+            uiOption |= (int)SystemUiFlags.Fullscreen;
+            uiOption |= (int)SystemUiFlags.Immersive;
+            uiOption |= (int)SystemUiFlags.HideNavigation;
+            uiOption |= (int)SystemUiFlags.LayoutFullscreen;
+
+            decorView.SystemUiVisibility = (StatusBarVisibility)uiOption;
         }
         protected void SetButtons() {
             Button addState = FindViewById<Button>(Resource.Id.addState);
@@ -66,8 +146,40 @@ namespace Turing {
             addSymbol.Click += delegate {
                 AddSymbol();
             };
+            Button startMachine = FindViewById<Button>(Resource.Id.startMachine);
+            startMachine.Click += delegate {
+                EndWork();
+                StartWork();
+            };
+            EditText inputView = FindViewById<EditText>(Resource.Id.input);
+            inputView.TextChanged += delegate {
+                inputView.SetBackgroundDrawable(editTextDrawable);
+            };
         }
+        protected void SetTape() {
+            cols = 1;
+            rows = 1;
 
+            tape = new TextView[11];
+            tapeList = new List<string>();
+            for (int i = 0; i < tape.Length; i++) {
+                tape[i] = FindViewById<TextView>(Resource.Id.tape0 + i);
+                tape[i].Text = "#";
+            }
+            index = -5;
+            col = 0;
+        }
+        protected void SetBlankSymbol() {
+            LinearLayout stateRow = FindViewById<LinearLayout>(Resource.Id.stateRow);
+            tableRows.Add(stateRow);
+
+            LinearLayout blankSymbolRow = (LinearLayout)inflater.Inflate(Resource.Layout.RowLayout, null);
+            RelativeLayout blankSymbolCell = (RelativeLayout)inflater.Inflate(Resource.Layout.CellLayout, null);
+            tableRows.Add(blankSymbolRow);
+            tableSymbols.AddView(blankSymbolRow, stateRow.ChildCount - 2);
+            blankSymbolRow.AddView(blankSymbolCell);
+            ChangeState(blankSymbolCell);
+        }
         protected void TmpStates() {
             stateTable = new state[3, 7];
             //#
@@ -99,15 +211,83 @@ namespace Turing {
             symbolTable.Add("#", 0);
             symbolTable.Add("0", 1);
             symbolTable.Add("1", 2);
+
+            tapeList.Add("1");
+            tapeList.Add("0");
+            tapeList.Add("1");
+            tapeList.Add("0");
+            tapeList.Add("1");
+            tapeList.Add("0");
+            tapeList.Add("1");
+            tapeList.Add("0");
+            tapeList.Add("1");
         }
-        //Turing Machine
+
+        //TURING MACHINE
+        protected void StartWork() {
+            bool readyToStart = false;
+            //SET SYMBOLS
+            symbolTable.Clear();
+            for (int i = 0; i < rows; i++) 
+                symbolTable.Add(tableRows[i + 1].GetChildAt(0).FindViewById<TextView>(Resource.Id.currentSymbol).Text, i);
+            //SET STATE TABLE
+            stateTable = new state[rows, cols];
+            for(int i = 0; i < rows; i++) {
+                for(int j = 0; j < cols; j++) {
+                    try {
+                        stateTable[i, j].direction = tableRows[i + 1].GetChildAt(j + 1).FindViewById<TextView>(Resource.Id.direction).Text;
+                        stateTable[i, j].symbol = tableRows[i + 1].GetChildAt(j + 1).FindViewById<TextView>(Resource.Id.symbol).Text;
+                        stateTable[i, j].nextState = Convert.ToInt32(
+                            tableRows[i + 1].GetChildAt(j + 1).FindViewById<TextView>(Resource.Id.state).Text.Substring(1));
+                    }
+                    catch (Exception e) {
+                        tableRows[i + 1].GetChildAt(j + 1).SetBackgroundColor(Color.Red);
+                        break;
+                    }
+                }
+            }
+            //SET INPUT
+            tapeList.Clear();
+            EditText inputView = FindViewById<EditText>(Resource.Id.input);
+            string input = inputView.Text;
+            if (input.Length != 0) {
+                try {
+                    for (int i = 0; i < input.Length; i++) {
+                        int tmp = (int)symbolTable[Convert.ToString(input[i])];
+                        tapeList.Add(Convert.ToString(input[i]));
+                    }
+                    readyToStart = true;
+                }
+                catch (Exception e) {
+                    readyToStart = false;
+                    inputView.SetBackgroundColor(Color.Red);
+                }
+            }
+            else
+                tapeList.Add("#");
+            //SET DELAY TIME
+            EditText delayView = FindViewById<EditText>(Resource.Id.delay);
+            try {
+                int tmpDelay = Convert.ToInt32("" + delayView.Text) * 1000;
+                if (tmpDelay > 1)
+                    delayTime = tmpDelay;
+                else
+                    delayTime = 500;
+            }
+            catch (Exception e) {
+                delayTime = 500;
+            }
+            if (readyToStart) {
+                machineTimer.Interval = delayTime;
+                machineTimer.Start();
+            }
+        }
         protected void EndWork() {
-            tak.Stop();
+            machineTimer.Stop();
         }
         protected void RunHead(string direction) {
             if (direction.Equals("R")) index++;
             else if (direction.Equals("L")) index--;
-            else EndWork();
         }
         protected void TuringMachine() {
             int i = 0;
@@ -137,7 +317,7 @@ namespace Turing {
             Action myAction = () => {
                 tape[5].Text = tapeList[listIndex];
             };
-            h.PostDelayed(myAction, delayTime/2);
+            h.PostDelayed(myAction, delayTime / 2);
             if(direction != null)
                 RunHead(direction);
             col = state;
@@ -150,52 +330,29 @@ namespace Turing {
         }
 
         protected override void OnCreate(Bundle bundle) {
+            RequestWindowFeature(WindowFeatures.NoTitle);
+            SetImmersiveMode();
             base.OnCreate(bundle);
-
-            tak = new Timer();
             SetContentView (Resource.Layout.Main);
 
-            TmpStates();
-            cols = 0;
-            SetButtons();
-
-            tape = new TextView[11];
-            tapeList = new List<string>();
-            for(int i = 0; i < tape.Length; i++) {
-                tape[i] = FindViewById<TextView>(Resource.Id.tasma0 + i);
-                tape[i].Text = "#";
-            }
-            tapeList.Add("1");
-            tapeList.Add("0");
-            tapeList.Add("1");
-            tapeList.Add("0");
-            tapeList.Add("1");
-            tapeList.Add("0");
-            tapeList.Add("1");
-            tapeList.Add("0");
-            tapeList.Add("1");
-            index = -5;
-            col = 0;
-
-            delayTime = 1000;
-            tak.Interval = delayTime;
-            tak.Elapsed += new ElapsedEventHandler(Timer_Repeat);
-            tak.Start();
-            
             inflater = (LayoutInflater)this.GetSystemService(Context.LayoutInflaterService);
-
             tableRows = new List<LinearLayout>();
-            LinearLayout stateRow = FindViewById<LinearLayout>(Resource.Id.stateRow);
-            tableRows.Add(stateRow);
-
             tableSymbols = FindViewById<LinearLayout>(Resource.Id.stateTabel);
-            LinearLayout blankSymbolRow = (LinearLayout)inflater.Inflate(Resource.Layout.RowLayout, null);
-            RelativeLayout blankSymbolCell = (RelativeLayout)inflater.Inflate(Resource.Layout.CellLayout, null);
-            tableRows.Add(blankSymbolRow);
-            tableSymbols.AddView(blankSymbolRow, stateRow.ChildCount-2);
-            blankSymbolRow.AddView(blankSymbolCell);
-            rows = 1;
 
+            SetButtons();
+            SetTape();
+            SetBlankSymbol();
+            TmpStates();
+            machineTimer = new Timer();
+            delayTime = 1000;
+            machineTimer.Elapsed += new ElapsedEventHandler(Timer_Repeat);
+
+            editTextDrawable = FindViewById<EditText>(Resource.Id.input).Background;
+        }
+
+        public override void OnUserInteraction() {
+            base.OnUserInteraction();
+            SetImmersiveMode();
         }
     }
 }

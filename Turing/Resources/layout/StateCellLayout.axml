@@ -4,4 +4,4 @@
     android:layout_height="40dp"
     android:text="Q"
     android:textSize="15sp"
-    android:gravity="center"/>
+    android:gravity="center" />
